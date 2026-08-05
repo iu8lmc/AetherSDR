@@ -619,6 +619,13 @@ set(CORE_SOURCES
     src/core/backends/hl2/Hl2Backend.cpp     # aetherd HL2 Phase 1b (IRadioBackend impl)
     src/core/backends/hl2/Hl2Discovery.cpp   # aetherd HL2 Phase 1c (HPSDR discovery -> picker)
     src/core/backends/hl2/Hl2Settings.cpp    # owned config object, "Hl2" root key (Principle V)
+    src/core/backends/colibri/ColibriLib.cpp        # ColibriNANO — vendor DLL loader (protocol authority)
+    src/core/backends/colibri/ColibriDevice.cpp     # ColibriNANO — descriptor + IQ stream on the I/O thread
+    src/core/backends/colibri/ColibriSpectrum.cpp   # ColibriNANO — FFT panadapter (FFTW)
+    src/core/backends/colibri/ColibriRxDsp.cpp      # ColibriNANO — IQ -> WdspChannel demod + spectrum
+    src/core/backends/colibri/ColibriBackend.cpp    # ColibriNANO — IRadioBackend impl (RX-only)
+    src/core/backends/colibri/ColibriDiscovery.cpp  # ColibriNANO — USB enumeration -> picker
+    src/core/backends/colibri/ColibriSettings.cpp   # owned config object, "Colibri" root key (Principle V)
     src/core/dsp/WdspChannel.cpp
     ${AETHER_SETTINGS_SOURCES}
     src/core/RadioStateMemory.cpp   # RFC #4603 client-side radio memory

@@ -8,6 +8,7 @@
 #include "core/backends/flex/FlexBackend.h"   // aetherd RFC 2.2 radio-facing seam
 #include "core/backends/sim/SimBackend.h"     // RFC #4288 demo-mode backend (Route A)
 #include "core/backends/hl2/Hl2Backend.h"      // aetherd Gap A — HL2 backend (family "hl2")
+#include "core/backends/colibri/ColibriBackend.h"  // ColibriNANO backend (family "colibri")
 #include "core/AppSettings.h"
 #include "core/RadioStateMemory.h"  // RFC #4603 typed restore handoff
 #include "core/CwTrace.h"
@@ -483,6 +484,11 @@ std::unique_ptr<IRadioBackend> RadioModel::makeBackend(const QString& family)
 {
     if (family.compare(QLatin1String("hl2"), Qt::CaseInsensitive) == 0)
         return std::make_unique<hl2::Hl2Backend>();
+    // ColibriNANO: pure-seam like HL2 — no RadioConnection, no
+    // PanadapterStream — so setupBackend()'s Flex/Sim harvesting block below
+    // skips it and only the neutral connects apply.
+    if (family.compare(QLatin1String("colibri"), Qt::CaseInsensitive) == 0)
+        return std::make_unique<colibri::ColibriBackend>();
     // RFC #4288 demo mode: the synthetic radio is selected here like any other
     // family, which is what completes the "wire it through the real SimBackend
     // factory" ask. Unlike HL2 it is a Route A hybrid — it owns a RadioConnection
