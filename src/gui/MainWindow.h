@@ -9,6 +9,9 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 #include "core/backends/colibri/ColibriDiscovery.h"
+#ifdef HAVE_SERIALPORT
+#include "core/backends/ft991/Ft991Discovery.h"
+#endif
 #include "core/backends/hl2/Hl2Discovery.h"
 #include "models/RadioModel.h"
 #include "models/BandSettings.h"
@@ -917,6 +920,12 @@ private:
     // ColibriNANO USB enumeration. Feeds the same ConnectionPanel slots,
     // tagged family="colibri".
     colibri::ColibriDiscovery m_colibriDiscovery;
+#ifdef HAVE_SERIALPORT
+    // Yaesu FT-991 serial-port scan. Feeds the same ConnectionPanel slots,
+    // tagged family="ft991". Absent when Qt SerialPort is not built, like
+    // the backend itself.
+    ft991::Ft991Discovery m_ft991Discovery;
+#endif
     // Radio sessions (#3445 Camp B / #3351). Each session owns the full
     // per-radio aggregate; today there is exactly one. The vector sits at
     // the old `RadioModel m_radioModel` member position so destruction

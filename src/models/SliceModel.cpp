@@ -363,6 +363,7 @@ void SliceModel::setNb(bool on)
 {
     m_nb = on;
     sendCommand(QString("slice set %1 nb=%2").arg(m_id).arg(on ? 1 : 0));
+    emit nbCommandIssued(on, m_nbLevel);
     emit nbChanged(on);
 }
 
@@ -370,6 +371,7 @@ void SliceModel::setNr(bool on)
 {
     m_nr = on;
     sendCommand(QString("slice set %1 nr=%2").arg(m_id).arg(on ? 1 : 0));
+    emit nrCommandIssued(on, m_nrLevel);
     emit nrChanged(on);
 }
 
@@ -377,6 +379,7 @@ void SliceModel::setAnf(bool on)
 {
     m_anf = on;
     sendCommand(QString("slice set %1 anf=%2").arg(m_id).arg(on ? 1 : 0));
+    emit anfCommandIssued(on);
     emit anfChanged(on);
 }
 
@@ -445,6 +448,7 @@ void SliceModel::setNbLevel(int v)
     if (m_nbLevel == v) return;
     m_nbLevel = v;
     sendCommand(QString("slice set %1 nb_level=%2").arg(m_id).arg(v));
+    emit nbCommandIssued(m_nb, v);
     emit nbLevelChanged(v);
 }
 
@@ -454,6 +458,7 @@ void SliceModel::setNrLevel(int v)
     if (m_nrLevel == v) return;
     m_nrLevel = v;
     sendCommand(QString("slice set %1 nr_level=%2").arg(m_id).arg(v));
+    emit nrCommandIssued(m_nr, v);
     emit nrLevelChanged(v);
 }
 

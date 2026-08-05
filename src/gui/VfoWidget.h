@@ -579,6 +579,10 @@ public:
     // toggle firmware that is not there. The client-side modules in the
     // AetherDSP applet are untouched.
     void setHasRadioSideDsp(bool has);
+    // Narrower sibling: the slice NB/NR/ANF intents reach the backend via
+    // seam verbs (RadioCapabilities::hasSliceNoiseDsp). ORed with
+    // m_hasRadioSideDsp for those three buttons only.
+    void setHasSliceNoiseDsp(bool has);
 
     // Reflect whether any client-side AetherDSP NR module (NR2 / NR4 / MNR /
     // BNR / DFNR / RN2) is active by accenting the ADSP launcher, so the cue is
@@ -710,6 +714,9 @@ private:
     // reported stays in its pre-existing state rather than briefly hiding
     // controls that do exist.
     bool         m_hasRadioSideDsp{true};
+    // Seam-verb noise DSP (see setHasSliceNoiseDsp). False by default: the
+    // pre-push visibility is already carried by m_hasRadioSideDsp's true.
+    bool         m_hasSliceNoiseDsp{false};
     // Mode eligibility for each radio-side DSP button, cached by the two places
     // that recompute it (the slice modeChanged handler and syncFromSlice) so
     // applyRadioSideDspVisibility() can AND it with the capability WITHOUT

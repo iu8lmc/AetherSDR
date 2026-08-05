@@ -220,6 +220,7 @@ RadioCapabilities ColibriBackend::capabilities() const
     c.hasProfiles = false;        // no on-device configuration store
     c.hasDaxStreams = false;      // one raw IQ feed, demodulated here
     c.hasRadioSideDsp = false;    // every noise module runs on this host
+    c.hasSliceNoiseDsp = false;   // no seam noise verbs wired to WDSP yet
     c.hasRadioSideWaterfallAutoBlack = false;
     c.hasWaveforms = false;
     c.hasMultiClientSessions = false;   // the DLL owns the device exclusively

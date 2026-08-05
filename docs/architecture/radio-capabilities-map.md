@@ -42,6 +42,27 @@ Tuning|Passband|SpanRate|RfGain|Memories (no TxSetpoints — nothing to set),
 everything else ❌/empty. Declared in `ColibriBackend::capabilities()`;
 design doc `aetherd-colibri-backend-design.md`.
 
+**Yaesu FT-991 (family `ft991`)** declares `model` `"FT-991"`,
+`tuningMinHz/MaxHz` 30 kHz–470 MHz, `canTransmit` ✅ (CAT `TX1;`/`TX0;`),
+`txPowerMaxWatts` 100, `hostModulates` ✅ (the RF modulator is in the radio,
+but the capability's consumers — mic-source list, PC-audio lock, TCI TX
+routing — gate on where the TX *audio* comes from, and that is this host's
+codec playback), `clientSettingsDomains` **empty** (the radio persists its
+own VFO/mode — the first radio-authoritative non-Flex backend, Constitution
+II/III), `hasRadioSideDsp` ❌ but `hasSliceNoiseDsp` ✅ — the NARROW
+sibling added for this backend: the slice NB/NR/ANF buttons reach the
+radio's own DSP through the seam verbs
+(`setSliceNoiseBlanker/NoiseReduction/AutoNotch` → CAT `NB`+`NL`,
+`NR`+`RL`, `BC`) while hasRadioSideDsp's riders (pan WNB row, TX APD row,
+NRL/ANFL/ANFT) stay hidden. `hasSliceNoiseDsp` is read at
+`RadioModel::hasSliceNoiseDsp()` → `VfoWidget::setHasSliceNoiseDsp()`,
+ORed with hasRadioSideDsp in `applyRadioSideDspVisibility()`; Flex
+declares it ✅ (its buttons work via wire text), HL2/Sim/Colibri ❌.
+`extensionNamespaces` carries `ft991` (`manualNotch`). Everything else
+❌/empty. Declared in `Ft991Backend::capabilities()`; design doc
+`aetherd-ft991-backend-design.md`. Only built when Qt SerialPort is
+(`HAVE_SERIALPORT`).
+
 | Field | Flex | HL2 | Sim | Read at | Effect |
 |---|:--:|:--:|:--:|---|---|
 | `family` | `"flex"` | `"hl2"` | `"sim"` | `MainWindow::rfGainSettingsKey` | Scopes the persisted RF-gain key per family |

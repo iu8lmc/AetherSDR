@@ -330,6 +330,15 @@ signals:
     // setAgcThreshold(), and always carries BOTH values because a backend
     // configuring a DSP AGC needs the pair to act on either.
     void agcCommandIssued(const QString& mode, int thresholdDb);
+    // Operator-issued per-slice noise DSP changes, same discipline as
+    // agcCommandIssued: the *Changed siblings also fire when radio status is
+    // applied, so driving a command off those would echo the radio's own
+    // state back as a request (Principle II). Emitted only from the setters,
+    // and flag+level travel together because a backend configuring real
+    // hardware (FT-991 CAT NB/NL, NR/RL) needs the pair to act on either.
+    void nbCommandIssued(bool on, int level);
+    void nrCommandIssued(bool on, int level);
+    void anfCommandIssued(bool on);
     // Operator-issued per-slice AUDIO changes, same discipline as the three
     // above: audioMuteChanged/audioGainChanged/audioPanChanged also fire when
     // radio status is applied, so driving a command off those would echo the

@@ -3172,12 +3172,29 @@ void VfoWidget::updateExtendedDspVisibility()
 // capability is applied here.
 void VfoWidget::applyRadioSideDspVisibility()
 {
-    m_nrBtn->setVisible(m_nrModeOk && m_hasRadioSideDsp);
-    m_nbBtn->setVisible(m_nbModeOk && m_hasRadioSideDsp);
-    m_anfBtn->setVisible(m_anfModeOk && m_hasRadioSideDsp);
+    // NB/NR/ANF are live on EITHER capability: hasRadioSideDsp (Flex wire
+    // text) or hasSliceNoiseDsp (seam verbs — FT-991 CAT). The v4 trio
+    // below stays radio-side-only: no seam verb carries NRL/ANFL/ANFT, so
+    // on a seam-verbs family they would be controls that reach nothing.
+    const bool noise = m_hasRadioSideDsp || m_hasSliceNoiseDsp;
+    m_nrBtn->setVisible(m_nrModeOk && noise);
+    m_nbBtn->setVisible(m_nbModeOk && noise);
+    m_anfBtn->setVisible(m_anfModeOk && noise);
     m_nrlBtn->setVisible(m_nrlModeOk && m_hasRadioSideDsp);
     m_anflBtn->setVisible(m_anflModeOk && m_hasRadioSideDsp);
     m_anftBtn->setVisible(m_anftModeOk && m_hasRadioSideDsp);
+}
+
+void VfoWidget::setHasSliceNoiseDsp(bool has)
+{
+    if (m_hasSliceNoiseDsp == has)
+        return;
+    m_hasSliceNoiseDsp = has;
+    // Same late-arrival hazard as setHasRadioSideDsp below.
+    if (!m_slice)
+        return;
+    applyRadioSideDspVisibility();
+    relayoutDspGrid();
 }
 
 void VfoWidget::setHasRadioSideDsp(bool has)

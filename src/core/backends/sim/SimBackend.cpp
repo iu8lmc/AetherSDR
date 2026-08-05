@@ -309,6 +309,7 @@ RadioCapabilities SimBackend::capabilities() const
     // Synthetic audio only; nothing to route to a virtual device.
     caps.hasDaxStreams = false;
     caps.hasRadioSideDsp = false;        // synthetic scene; no firmware DSP
+    caps.hasSliceNoiseDsp = false;
     // No radio-side display engine either — the demo's rows carry no black level.
     caps.hasRadioSideWaterfallAutoBlack = false;
     caps.hasWaveforms = false;

@@ -175,6 +175,21 @@ struct RadioCapabilities {
     // has the base set. A radio with hasRadioSideDsp=false has neither.
     bool hasRadioSideDsp = false;
 
+    // The per-slice noise controls — NB, NR, ANF and their levels — reach
+    // THIS backend through the seam verbs (setSliceNoiseBlanker /
+    // setSliceNoiseReduction / setSliceAutoNotch), so the VFO DSP buttons
+    // are live even though hasRadioSideDsp is false.
+    //
+    // A NARROWER statement than hasRadioSideDsp, split off deliberately:
+    // that flag also rides the pan overlay's WNB row and the TX APD row,
+    // which only a Flex command plane can serve. A CAT transceiver (FT-991:
+    // NB/NL, NR/RL, BC) can honour the slice buttons and nothing else — so
+    // it declares THIS and the riders stay hidden, instead of shipping the
+    // HERMES §17 failure shape (a control that moves and does nothing).
+    // Flex declares it too (its buttons work via wire text); the UI shows
+    // the buttons when EITHER flag is set.
+    bool hasSliceNoiseDsp = false;
+
     // The RADIO computes the waterfall's black level per tile and embeds it in
     // the waterfall stream, so the client can hand the floor decision to the
     // hardware instead of estimating it. True for a Flex, which does this on

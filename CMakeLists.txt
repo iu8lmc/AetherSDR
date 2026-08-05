@@ -792,6 +792,20 @@ set(CORE_SOURCES
     src/core/aprs/AprsSettings.cpp
 )
 
+if(Qt6SerialPort_FOUND)
+    # The FT-991 backend speaks CAT over QSerialPort; a build without Qt
+    # SerialPort simply has no "ft991" family (RadioModel and MainWindow
+    # guard their references on HAVE_SERIALPORT).
+    list(APPEND CORE_SOURCES
+        src/core/backends/ft991/Ft991Cat.cpp        # FT-991 — CAT frame codec (authority: Yaesu CAT manual)
+        src/core/backends/ft991/Ft991Spectrum.cpp   # FT-991 — audio-band FFT panadapter (FFTW)
+        src/core/backends/ft991/Ft991Device.cpp     # FT-991 — CAT serial + USB codec on the I/O thread
+        src/core/backends/ft991/Ft991Backend.cpp    # FT-991 — IRadioBackend impl (audio-lens pan)
+        src/core/backends/ft991/Ft991Discovery.cpp  # FT-991 — CP210x port scan -> picker
+        src/core/backends/ft991/Ft991Settings.cpp   # owned config object, "Ft991" root key (Principle V)
+    )
+endif()
+
 if(APPLE)
     list(APPEND CORE_SOURCES src/core/VirtualAudioBridge.cpp src/core/MacMicPermission.mm)
 elseif(UNIX)

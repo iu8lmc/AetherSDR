@@ -313,6 +313,10 @@ public:
     // Says nothing about the CLIENT-side modules (NR2/NR4/MNR/BNR/DFNR/RN2),
     // which run on this host and work on any family.
     bool hasRadioSideDsp() const;
+    // True when the connected backend takes the slice NB/NR/ANF intents
+    // through the seam verbs (RadioCapabilities::hasSliceNoiseDsp). ORed
+    // with hasRadioSideDsp() by the VFO DSP visibility.
+    bool hasSliceNoiseDsp() const;
     // Whether the RADIO computes the waterfall black level per tile
     // (RadioCapabilities::hasRadioSideWaterfallAutoBlack) — the HW position of
     // the Display panel's Black Level button. Same permissive disconnected rule.

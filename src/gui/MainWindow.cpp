@@ -6564,6 +6564,7 @@ void MainWindow::applyCapabilitiesToUi(bool connected, const RadioCapabilities& 
     // Both accessors apply their own permissive rule for the disconnected case,
     // which is why neither reads off `caps` here.
     const bool radioSideDsp = m_radioModel.hasRadioSideDsp();
+    const bool sliceNoiseDsp = m_radioModel.hasSliceNoiseDsp();
 
     if (m_panStack) {
         for (auto* applet : m_panStack->allApplets()) {
@@ -6574,6 +6575,7 @@ void MainWindow::applyCapabilitiesToUi(bool connected, const RadioCapabilities& 
             for (auto* vfo : sw->findChildren<VfoWidget*>()) {
                 vfo->setHasExtendedDsp(extendedDsp);
                 vfo->setHasRadioSideDsp(radioSideDsp);
+                vfo->setHasSliceNoiseDsp(sliceNoiseDsp);
             }
             // WNB lives in the pan's overlay menu, not the VFO.
             applyRadioSideDspToPanDisplay(sw);

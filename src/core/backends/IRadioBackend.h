@@ -118,6 +118,34 @@ public:
     // configures that chain. Sent as a pair because a backend configuring a DSP
     // AGC generally needs both to make either meaningful.
     virtual void setSliceAgc(int sliceId, const QString& mode, int thresholdDb) = 0;
+
+    // Per-slice noise DSP intents: noise blanker, noise reduction, auto
+    // notch. On a Flex these travel as slice wire text and these defaults
+    // are never reached; a backend whose radio (FT-991: CAT NB/NL, NR/RL,
+    // BC) or host DSP chain owns them implements them. Levels ride the
+    // slice's own 0..100 scale — the backend maps to its hardware's range,
+    // exactly as setSliceAgc maps the AGC threshold. Flag and level arrive
+    // as a pair for the same reason AGC's do: a backend configuring real
+    // hardware generally needs both to make either meaningful.
+    // (Declared as capability hasSliceNoiseDsp; UI shows the controls when
+    // either that or hasRadioSideDsp is set.)
+    virtual void setSliceNoiseBlanker(int sliceId, bool on, int level)
+    {
+        Q_UNUSED(sliceId);
+        Q_UNUSED(on);
+        Q_UNUSED(level);
+    }
+    virtual void setSliceNoiseReduction(int sliceId, bool on, int level)
+    {
+        Q_UNUSED(sliceId);
+        Q_UNUSED(on);
+        Q_UNUSED(level);
+    }
+    virtual void setSliceAutoNotch(int sliceId, bool on)
+    {
+        Q_UNUSED(sliceId);
+        Q_UNUSED(on);
+    }
     // Move the panadapter's centre — the receiver's WINDOW, not the slice.
     // A backend whose hardware streams a fixed window retunes it; one that
     // owns a DDC moves the NCO. Without this the UI can pan the view locally

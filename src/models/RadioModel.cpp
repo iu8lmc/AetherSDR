@@ -9,6 +9,9 @@
 #include "core/backends/sim/SimBackend.h"     // RFC #4288 demo-mode backend (Route A)
 #include "core/backends/hl2/Hl2Backend.h"      // aetherd Gap A — HL2 backend (family "hl2")
 #include "core/backends/colibri/ColibriBackend.h"  // ColibriNANO backend (family "colibri")
+#ifdef HAVE_SERIALPORT
+#include "core/backends/ft991/Ft991Backend.h"  // Yaesu FT-991 backend (family "ft991")
+#endif
 #include "core/AppSettings.h"
 #include "core/RadioStateMemory.h"  // RFC #4603 typed restore handoff
 #include "core/CwTrace.h"
@@ -489,6 +492,13 @@ std::unique_ptr<IRadioBackend> RadioModel::makeBackend(const QString& family)
     // skips it and only the neutral connects apply.
     if (family.compare(QLatin1String("colibri"), Qt::CaseInsensitive) == 0)
         return std::make_unique<colibri::ColibriBackend>();
+#ifdef HAVE_SERIALPORT
+    // Yaesu FT-991: pure-seam like HL2/Colibri (no RadioConnection, no
+    // PanadapterStream), so setupBackend()'s Flex/Sim harvesting block
+    // skips it. Absent entirely when Qt SerialPort is not built.
+    if (family.compare(QLatin1String("ft991"), Qt::CaseInsensitive) == 0)
+        return std::make_unique<ft991::Ft991Backend>();
+#endif
     // RFC #4288 demo mode: the synthetic radio is selected here like any other
     // family, which is what completes the "wire it through the real SimBackend
     // factory" ask. Unlike HL2 it is a Route A hybrid — it owns a RadioConnection
@@ -995,6 +1005,21 @@ void RadioModel::setupBackend(const QString& family)
             connect(s, &SliceModel::agcCommandIssued, this,
                     [this, s](const QString& mode, int thresholdDb) {
                 if (m_backend) m_backend->setSliceAgc(s->sliceId(), mode, thresholdDb);
+            });
+            // The noise DSP trio follows the AGC shape verbatim: intent
+            // signals from the operator paths only, echoes never re-emit
+            // (Principle II), flag+level as a pair.
+            connect(s, &SliceModel::nbCommandIssued, this,
+                    [this, s](bool on, int level) {
+                if (m_backend) m_backend->setSliceNoiseBlanker(s->sliceId(), on, level);
+            });
+            connect(s, &SliceModel::nrCommandIssued, this,
+                    [this, s](bool on, int level) {
+                if (m_backend) m_backend->setSliceNoiseReduction(s->sliceId(), on, level);
+            });
+            connect(s, &SliceModel::anfCommandIssued, this,
+                    [this, s](bool on) {
+                if (m_backend) m_backend->setSliceAutoNotch(s->sliceId(), on);
             });
             wireSliceAudioIntentsToBackend(s);
             m_slices.append(s);
@@ -3173,6 +3198,15 @@ bool RadioModel::hasRadioSideDsp() const
         return true;   // nothing attached — assume present, see the header
     }
     return backendCapabilities().hasRadioSideDsp;
+}
+
+bool RadioModel::hasSliceNoiseDsp() const
+{
+    // No permissive disconnected-case rule needed: the consumer ORs this
+    // with hasRadioSideDsp(), whose disconnected true already keeps the
+    // buttons visible before a radio is attached.
+    return m_backend && isConnected()
+        && backendCapabilities().hasSliceNoiseDsp;
 }
 
 bool RadioModel::hasRadioSideWaterfallAutoBlack() const
