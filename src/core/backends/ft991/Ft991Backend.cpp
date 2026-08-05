@@ -86,6 +86,19 @@ Ft991Backend::Ft991Backend(QObject* parent) : IRadioBackend(parent)
         m_linkStatsTimer->stop();
         emit connectionError(QStringLiteral("FT-991: %1").arg(reason));
     });
+    connect(m_device, &Ft991Device::linkLost, this, [this](const QString& reason) {
+        // The device already tore itself down; this side only reports.
+        // disconnected() FIRST so the session state is consistent before
+        // the error dialog names the cause.
+        if (!m_connected)
+            return;
+        m_connected = false;
+        m_moxRequested = false;
+        m_tuneActive = false;
+        m_linkStatsTimer->stop();
+        emit disconnected();
+        emit connectionError(QStringLiteral("FT-991: %1").arg(reason));
+    });
 
     // ---- CAT state up. The radio is the authority; these follow it. ----
     connect(m_device, &Ft991Device::catFrequency, this, [this](double hz) {
@@ -200,6 +213,17 @@ Ft991Backend::Ft991Backend(QObject* parent) : IRadioBackend(parent)
             return;
         m_sMeterClock.restart();
         emit meterUpdate(QStringLiteral("SLC:LEVEL"), m_sMeterDbm);
+    });
+
+    connect(m_device, &Ft991Device::catTxPowerMeter, this, [this](int raw) {
+        if (m_connected)
+            emit meterUpdate(QStringLiteral("TX:FWDPWR"),
+                             raw * kPoMeterFullScaleWatts / 255.0);
+    });
+    connect(m_device, &Ft991Device::catTxSwrMeter, this, [this](int raw) {
+        if (m_connected)
+            emit meterUpdate(QStringLiteral("TX:SWR"),
+                             1.0 + raw * kSwrMeterSpanPerCount);
     });
 
     // ---- data plane up ----
@@ -861,6 +885,28 @@ void Ft991Backend::defineMeters()
     d.high = 0.0;
     d.description = QStringLiteral("Receive signal level (radio S-meter, uncalibrated)");
     emit meterDefined(d);
+
+    // TX meters, polled off RM5/RM6 while keyed. FWDPWR and SWR are the
+    // names MeterModel resolves for the TX gauges.
+    MeterDef po;
+    po.index = 2;
+    po.source = QStringLiteral("TX");
+    po.name = QStringLiteral("FWDPWR");
+    po.unit = QStringLiteral("W");
+    po.low = 0.0;
+    po.high = kPoMeterFullScaleWatts;
+    po.description = QStringLiteral("Forward power (radio PO meter, uncalibrated)");
+    emit meterDefined(po);
+
+    MeterDef swr;
+    swr.index = 3;
+    swr.source = QStringLiteral("TX");
+    swr.name = QStringLiteral("SWR");
+    swr.unit = QStringLiteral("SWR");
+    swr.low = 1.0;
+    swr.high = 5.0;
+    swr.description = QStringLiteral("Antenna SWR (radio meter, uncalibrated)");
+    emit meterDefined(swr);
 }
 
 void Ft991Backend::publishLinkStats()

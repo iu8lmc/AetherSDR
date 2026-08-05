@@ -137,6 +137,10 @@ public slots:
 signals:
     void opened(const AetherSDR::ft991::Ft991Device::OpenInfo& info);
     void openFailed(const QString& reason);
+    // The link died mid-session: serial port gone (USB unplug), CAT gone
+    // quiet (radio powered off), or the codec capture failed. Emitted
+    // AFTER the device has torn itself down — the backend only reports.
+    void linkLost(const QString& reason);
 
     // Change-gated CAT state (values as the radio reported them).
     void catFrequency(double hz);
@@ -154,6 +158,9 @@ signals:
     void catNoiseReductionLevel(int level1to15);
     void catManualNotch(bool on);
     void catManualNotchHz(int hz);
+    // TX meters, every reading while transmitting (raw 0..255).
+    void catTxPowerMeter(int raw);
+    void catTxSwrMeter(int raw);
 
     // 24 kHz interleaved-stereo float RX audio (AudioEngine's native format).
     void audioBlockReady(const std::vector<float>& stereoPcm);
@@ -173,6 +180,7 @@ private:
     void startTxSink();
     void stopTxSink();
     void failOpen(const QString& reason);
+    void failLink(const QString& reason);
     void appendMonoFloat(const QByteArray& pcm, std::vector<float>& mono) const;
     [[nodiscard]] bool spectrumFrameDue();
 
@@ -185,6 +193,9 @@ private:
     QElapsedTimer m_inFlightClock;
     quint32 m_tick = 0;
     int m_idAttempts = 0;
+    // Consecutive expired queries while Running — the radio-went-quiet
+    // detector. Reset by every parsed frame.
+    int m_consecutiveTimeouts = 0;
 
     enum class State { Idle, AwaitId, AwaitInitial, Running };
     State m_state = State::Idle;
@@ -260,6 +271,8 @@ private:
     static constexpr int kPollIntervalMs = 100;
     static constexpr int kQueryTimeoutMs = 400;
     static constexpr int kIdRetries = 3;
+    // ~5 s of unanswered CAT (timeouts accumulate at ~2/s) = link dead.
+    static constexpr int kMaxConsecutiveTimeouts = 10;
     static constexpr int kAudioOutRateFallbackHz = 48000;
     static constexpr double kTuneToneHz = 1500.0;
     static constexpr double kTuneToneAmplitude = 0.7;

@@ -72,6 +72,8 @@ QByteArray setManualNotch(bool on);          // "BP00001;" / "BP00000;"
 QByteArray setManualNotchHz(int hz);         // "BP01<3 digits>;" (10 Hz steps)
 QByteArray queryManualNotch();               // "BP00;"
 QByteArray queryManualNotchHz();             // "BP01;"
+QByteArray queryTxPowerMeter();              // "RM5;" — PO, 0..255
+QByteArray queryTxSwrMeter();                // "RM6;" — SWR, 0..255
 
 // The FT-991 tuning range this backend will command, Hz (RX coverage; the
 // radio itself refuses TX outside its bands, which is its call, not ours).
@@ -109,6 +111,8 @@ struct Response {
         NoiseReductionLevel, // raw valid: 1..15
         ManualNotch,     // raw valid: 0/1
         ManualNotchFreq, // raw valid: Hz
+        TxPowerMeter,    // raw valid: 0..255 (PO)
+        TxSwrMeter,      // raw valid: 0..255
         Rejected,    // the radio answered "?" — command refused/unparsed
         Unknown,     // well-formed but not a frame this backend consumes
     };

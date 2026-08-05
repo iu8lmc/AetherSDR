@@ -187,6 +187,12 @@ private:
     // does moves the trace.
     static constexpr double kFullScaleDbm = -10.0;
 
+    // TX meter scaling, raw 0..255, both UNCALIBRATED linear estimates
+    // (the CAT manual publishes no calibration): PO full scale = the HF
+    // 100 W rating; SWR spans 1.0..4.0 across the meter.
+    static constexpr double kPoMeterFullScaleWatts = 100.0;
+    static constexpr double kSwrMeterSpanPerCount = 3.0 / 255.0;
+
     // S-meter raw 0..255 -> displayed dBm, linear and uncalibrated:
     // 0 -> -127 dBm (S0-ish), 255 -> -34 dBm (~S9+40).
     static constexpr double kSMeterFloorDbm = -127.0;

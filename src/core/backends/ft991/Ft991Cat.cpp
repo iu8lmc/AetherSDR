@@ -197,6 +197,8 @@ QByteArray setManualNotchHz(int hz)
 
 QByteArray queryManualNotch()   { return QByteArrayLiteral("BP00;"); }
 QByteArray queryManualNotchHz() { return QByteArrayLiteral("BP01;"); }
+QByteArray queryTxPowerMeter()  { return QByteArrayLiteral("RM5;"); }
+QByteArray queryTxSwrMeter()    { return QByteArrayLiteral("RM6;"); }
 
 QByteArray setFrequency(double hz)
 {
@@ -415,7 +417,21 @@ std::optional<Response> parse(const QByteArray& frame)
         r.raw = static_cast<int>(v);
         return r;
     }
-    if (frame.startsWith("BP0") && frame.size() == 8) {
+    if (frame.startsWith("RM") && frame.size() == 6) {
+        const qint64 v = digits(3, 3);
+        if (v < 0 || v > 255)
+            return r;
+        if (frame.at(2) == '5')
+            r.kind = Response::Kind::TxPowerMeter;
+        else if (frame.at(2) == '6')
+            r.kind = Response::Kind::TxSwrMeter;
+        else
+            return r;   // a meter this backend does not poll
+        r.raw = static_cast<int>(v);
+        return r;
+    }
+    // 7, not 8: parse() receives the frame with the ';' already stripped.
+    if (frame.startsWith("BP0") && frame.size() == 7) {
         // "BP00nnn" = on/off, "BP01nnn" = position in 10 Hz steps.
         const qint64 v = digits(4, 3);
         if (v < 0)

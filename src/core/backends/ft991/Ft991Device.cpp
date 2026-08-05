@@ -55,6 +55,8 @@ QByteArray queryForKind(Ft991Cat::Response::Kind kind)
     case Kind::NoiseReductionLevel: return Ft991Cat::queryNoiseReductionLevel();
     case Kind::ManualNotch:       return Ft991Cat::queryManualNotch();
     case Kind::ManualNotchFreq:   return Ft991Cat::queryManualNotchHz();
+    case Kind::TxPowerMeter:      return Ft991Cat::queryTxPowerMeter();
+    case Kind::TxSwrMeter:        return Ft991Cat::queryTxSwrMeter();
     default:              return {};
     }
 }
@@ -102,6 +104,18 @@ void Ft991Device::openDevice(const Params& params)
     m_serial->setRequestToSend(false);
     connect(m_serial, &QSerialPort::readyRead,
             this, &Ft991Device::onSerialReadyRead);
+    // USB unplug lands here as ResourceError (Windows) — without this the
+    // session is a zombie: no readyRead ever again, no error surfaced, the
+    // heartbeat just goes quiet. PermanentError is the POSIX sibling.
+    connect(m_serial, &QSerialPort::errorOccurred, this,
+            [this](QSerialPort::SerialPortError error) {
+        if (error == QSerialPort::ResourceError
+            || error == QSerialPort::ReadError) {
+            failLink(QStringLiteral(
+                "serial port %1 lost (USB cable removed?)")
+                    .arg(m_params.portName));
+        }
+    });
 
     if (!m_pollTimer) {
         m_pollTimer = new QTimer(this);
@@ -114,6 +128,7 @@ void Ft991Device::openDevice(const Params& params)
     m_inFlight.clear();
     m_tick = 0;
     m_idAttempts = 0;
+    m_consecutiveTimeouts = 0;
     m_haveFreq = false;
     m_haveMode = false;
     m_freqHz = 0.0;
@@ -226,6 +241,7 @@ void Ft991Device::handleFrame(const QByteArray& frame)
     const auto parsed = Ft991Cat::parse(frame);
     if (!parsed)
         return;
+    m_consecutiveTimeouts = 0;   // the radio is talking
     using Kind = Ft991Cat::Response::Kind;
     const Ft991Cat::Response& r = *parsed;
 
@@ -302,6 +318,12 @@ void Ft991Device::handleFrame(const QByteArray& frame)
         break;
     case Kind::SMeter:
         emit catSMeter(r.raw);
+        break;
+    case Kind::TxPowerMeter:
+        emit catTxPowerMeter(r.raw);
+        break;
+    case Kind::TxSwrMeter:
+        emit catTxSwrMeter(r.raw);
         break;
     case Kind::Power:
         if (r.raw != m_powerWatts) {
@@ -396,6 +418,19 @@ void Ft991Device::failOpen(const QString& reason)
     emit openFailed(reason);
 }
 
+void Ft991Device::failLink(const QString& reason)
+{
+    // Pre-open failures keep the openFailed vocabulary; only a RUNNING
+    // session reports a lost link.
+    if (m_state != State::Running) {
+        failOpen(reason);
+        return;
+    }
+    qCWarning(lcFt991Dev) << "link lost:" << reason;
+    closeDevice();
+    emit linkLost(reason);
+}
+
 void Ft991Device::onPollTick()
 {
     ++m_tick;
@@ -418,7 +453,24 @@ void Ft991Device::onPollTick()
             enqueueQuery(Ft991Cat::queryId());
         } else {
             qCDebug(lcFt991Dev) << "CAT query timed out:" << lost;
+            if (m_state == State::Running
+                && ++m_consecutiveTimeouts >= kMaxConsecutiveTimeouts) {
+                failLink(QStringLiteral(
+                    "CAT on %1 stopped answering — radio powered off?")
+                        .arg(m_params.portName));
+                return;
+            }
         }
+    }
+
+    // The codec dying (USB unplug takes it with the serial port; the audio
+    // half can also die alone) has no signal of its own worth trusting —
+    // poll the error state once a second.
+    if (m_state == State::Running && m_tick % 10 == 0 && m_audioIn
+        && m_audioIn->error() == QAudio::IOError) {
+        failLink(QStringLiteral("audio capture from \"%1\" failed")
+                     .arg(m_params.audioInHint));
+        return;
     }
 
     if (m_state == State::Running) {
@@ -427,6 +479,10 @@ void Ft991Device::onPollTick()
         // radio's own knob lands within a poll period; drive and AGC crawl.
         if (m_txState == 0)
             enqueueQuery(Ft991Cat::querySMeter());
+        else if (m_tick % 2 == 0)
+            enqueueQuery(Ft991Cat::queryTxPowerMeter());
+        else
+            enqueueQuery(Ft991Cat::queryTxSwrMeter());
         if (m_tick % 3 == 1)
             enqueueQuery(Ft991Cat::queryFrequency());
         if (m_tick % 5 == 2)

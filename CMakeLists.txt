@@ -4014,6 +4014,19 @@ target_include_directories(acom_protocol_test PRIVATE src)
 target_link_libraries(acom_protocol_test PRIVATE Qt6::Core)
 add_test(NAME acom_protocol_test COMMAND acom_protocol_test)
 
+if(Qt6SerialPort_FOUND)
+    # Ft991Cat is deliberately free of QSerialPort so the wire vocabulary is
+    # testable without hardware; the guard is only here because the family
+    # itself is not built without Qt SerialPort.
+    add_executable(ft991_cat_test
+        tests/ft991_cat_test.cpp
+        src/core/backends/ft991/Ft991Cat.cpp
+    )
+    target_include_directories(ft991_cat_test PRIVATE src)
+    target_link_libraries(ft991_cat_test PRIVATE Qt6::Core)
+    add_test(NAME ft991_cat_test COMMAND ft991_cat_test)
+endif()
+
 add_executable(ole_compound_file_test
     tests/ole_compound_file_test.cpp
     src/core/OleCompoundFile.cpp

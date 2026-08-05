@@ -203,6 +203,26 @@ no-op verbs on `IRadioBackend` next to `setSliceAgc`, intent signals
 `hasRadioSideDsp`'s riders (pan WNB row, TX APD row, the v4 NRL/ANFL/ANFT
 trio), which no CAT plane can serve.
 
+## Losing the link
+
+A serial `ResourceError`/`ReadError` (USB cable pulled), ten consecutive
+unanswered CAT queries (~5 s — the radio switched off), or a capture
+`IOError` all funnel into `failLink()`: the device tears itself down and
+emits `linkLost(reason)`, and the backend answers with `disconnected()`
+followed by `connectionError(reason)` — that order, so the session state
+is consistent before the reason is displayed. Without this the session
+was a zombie: no `readyRead` ever again, nothing surfaced, and only the
+heartbeat quietly going amber.
+
+## TX meters
+
+While `txState != 0` the S-meter poll is replaced by alternating `RM5`
+(PO) and `RM6` (SWR), published as `TX:FWDPWR` (watts) and `TX:SWR`.
+Both scalings are UNCALIBRATED linear estimates of the 0–255 raw count —
+the CAT manual publishes no calibration — so the SWR reading is a
+*trend*, not a measurement. Treat 1.0 as "meter at rest", not as a
+matched antenna.
+
 ## Not in this cut (documented so nobody debugs their absence)
 
 - RF gain (`RG`), the radio's CONTOUR/APF: not driven. The AGC threshold
