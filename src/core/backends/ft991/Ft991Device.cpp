@@ -340,6 +340,8 @@ void Ft991Device::handleFrame(const QByteArray& frame)
             m_ritOn = rit;
             m_xitOn = xit;
             m_clarifierHz = r.clarifierHz;
+            qCDebug(lcFt991Dev) << "clarifier: rit" << rit << "xit" << xit
+                                << "offset" << r.clarifierHz << "Hz";
             emit catClarifier(rit, xit, r.clarifierHz);
         }
         break;
@@ -420,6 +422,16 @@ void Ft991Device::handleFrame(const QByteArray& frame)
         qCDebug(lcFt991Dev) << "CAT command refused";
         break;
     case Kind::Unknown:
+        // An IF we could not read is worth saying out loud ONCE: the whole
+        // clarifier readback rides on that frame's field offsets, and the
+        // failure is otherwise completely silent (RIT would simply never
+        // move). Rate-limited to the first, so a chatty radio cannot flood.
+        if (frame.startsWith("IF") && !m_loggedBadInfo) {
+            m_loggedBadInfo = true;
+            qCWarning(lcFt991Dev)
+                << "unparsed IF response (" << frame.size() << "chars):"
+                << frame;
+        }
         break;
     }
 

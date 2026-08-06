@@ -227,6 +227,7 @@ private:
     int m_manualNotchHz = -1;
     int m_ritOn = -1;
     int m_xitOn = -1;
+    bool m_loggedBadInfo = false;
     int m_clarifierHz = 0;
     bool m_haveClarifier = false;
 
