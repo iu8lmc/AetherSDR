@@ -57,6 +57,7 @@ QByteArray queryForKind(Ft991Cat::Response::Kind kind)
     case Kind::ManualNotchFreq:   return Ft991Cat::queryManualNotchHz();
     case Kind::TxPowerMeter:      return Ft991Cat::queryTxPowerMeter();
     case Kind::TxSwrMeter:        return Ft991Cat::queryTxSwrMeter();
+    case Kind::Info:              return Ft991Cat::queryInfo();
     default:              return {};
     }
 }
@@ -146,6 +147,10 @@ void Ft991Device::openDevice(const Params& params)
     m_nrLevel = -1;
     m_manualNotch = -1;
     m_manualNotchHz = -1;
+    m_ritOn = -1;
+    m_xitOn = -1;
+    m_clarifierHz = 0;
+    m_haveClarifier = false;
 
     // Polled operation is the contract (design doc): push mode off, then
     // verify who is answering before anything else is said.
@@ -319,6 +324,26 @@ void Ft991Device::handleFrame(const QByteArray& frame)
     case Kind::SMeter:
         emit catSMeter(r.raw);
         break;
+    case Kind::Info: {
+        // IF carries the dial and mode too; feed them through the same
+        // change gates as the dedicated polls so the two agree.
+        if (r.frequencyHz != m_freqHz) {
+            m_freqHz = r.frequencyHz;
+            emit catFrequency(m_freqHz);
+        }
+        m_haveFreq = true;
+        const bool rit = r.ritOn;
+        const bool xit = r.xitOn;
+        if (!m_haveClarifier || m_ritOn != int(rit) || m_xitOn != int(xit)
+            || m_clarifierHz != r.clarifierHz) {
+            m_haveClarifier = true;
+            m_ritOn = rit;
+            m_xitOn = xit;
+            m_clarifierHz = r.clarifierHz;
+            emit catClarifier(rit, xit, r.clarifierHz);
+        }
+        break;
+    }
     case Kind::TxPowerMeter:
         emit catTxPowerMeter(r.raw);
         break;
@@ -496,6 +521,9 @@ void Ft991Device::onPollTick()
         // Radio-side DSP reflection, one query per ~5 s each, phase-spread:
         // enough to follow the radio's own WIDTH/NB/DNF controls without
         // crowding the fast dial/meter polls.
+        // IF: the clarifier's only readback (and a free dial cross-check).
+        if (m_tick % 10 == 6)
+            enqueueQuery(Ft991Cat::queryInfo());
         if (m_tick % 50 == 12)
             enqueueQuery(Ft991Cat::queryNarrow());
         if (m_tick % 50 == 17)
@@ -615,6 +643,17 @@ void Ft991Device::setRadioNoiseReductionLevel(int level1to15)
 {
     writeFrame(Ft991Cat::setNoiseReductionLevel(level1to15));
     enqueueQuery(Ft991Cat::queryNoiseReductionLevel());
+    trySendNextQuery();
+}
+
+void Ft991Device::setRadioClarifier(bool ritOn, bool xitOn, int offsetHz)
+{
+    // Offset first: enabling a clarifier that still holds the previous
+    // offset would pull the receiver off frequency for a poll period.
+    writeFrame(Ft991Cat::setClarifierOffset(offsetHz));
+    writeFrame(Ft991Cat::setRitEnabled(ritOn));
+    writeFrame(Ft991Cat::setXitEnabled(xitOn));
+    enqueueQuery(Ft991Cat::queryInfo());
     trySendNextQuery();
 }
 

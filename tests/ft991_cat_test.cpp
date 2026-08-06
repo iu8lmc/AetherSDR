@@ -97,6 +97,65 @@ int main()
            Ft991Cat::setNarrow(true) == QByteArray("NA01;")
                && Ft991Cat::setNarrow(false) == QByteArray("NA00;"));
 
+    // ── Clarifier. There is no absolute-offset command on the wire, so the
+    //    setter is "clear then step" — and the FT-991 has ONE shared knob,
+    //    which is why RIT and XIT enable separately but cannot hold
+    //    different offsets.
+    report("RT/XT carry the two enable flags independently",
+           Ft991Cat::setRitEnabled(true) == QByteArray("RT1;")
+               && Ft991Cat::setRitEnabled(false) == QByteArray("RT0;")
+               && Ft991Cat::setXitEnabled(true) == QByteArray("XT1;")
+               && Ft991Cat::setXitEnabled(false) == QByteArray("XT0;"));
+    report("a positive offset clears then steps UP, 4 digits",
+           Ft991Cat::setClarifierOffset(1200) == QByteArray("RC;RU1200;"));
+    report("a negative offset clears then steps DOWN",
+           Ft991Cat::setClarifierOffset(-350) == QByteArray("RC;RD0350;"));
+    report("zero is a bare clear — no pointless step",
+           Ft991Cat::setClarifierOffset(0) == QByteArray("RC;"));
+    report("the offset clamps to the 4-digit field",
+           Ft991Cat::setClarifierOffset(50000) == QByteArray("RC;RU9999;")
+               && Ft991Cat::setClarifierOffset(-50000) == QByteArray("RC;RD9999;"));
+
+    // ── IF response. Field offsets are the whole content of this parse, and
+    //    every one of them is an opportunity for an off-by-one that silently
+    //    reads the neighbouring field. 27 chars with the ';' stripped:
+    //    IF|ch |frequency|clar |R|X|M|V|C|00|S
+    //           IF|ch |frequency|clar |RXM VC00S
+    {
+        const QByteArray f("IF001014074000+000000200000");
+        const auto r = Ft991Cat::parse(f);
+        report("the IF fixture is the 27 characters the radio really sends",
+               f.size() == 27);
+        report("IF decodes the 9-digit VFO-A frequency",
+               r && r->kind == Ft991Cat::Response::Kind::Info
+                   && r->frequencyHz == 14'074'000.0);
+    }
+    {
+        // clarifier +1200, RIT on, XIT off, mode 2 (USB)
+        const auto r = Ft991Cat::parse(QByteArray("IF001014074000+120010200000"));
+        report("IF decodes a positive clarifier with RIT on and XIT off",
+               r && r->kind == Ft991Cat::Response::Kind::Info
+                   && r->clarifierHz == 1200 && r->ritOn && !r->xitOn
+                   && r->mode == "USB");
+    }
+    {
+        // clarifier -0350, RIT off, XIT on, mode 1 (LSB)
+        const auto r = Ft991Cat::parse(QByteArray("IF001007074000-035001100000"));
+        report("IF decodes a negative clarifier with XIT on and RIT off",
+               r && r->clarifierHz == -350 && !r->ritOn && r->xitOn
+                   && r->mode == "LSB");
+    }
+    {
+        const auto r = Ft991Cat::parse(QByteArray("IF00114074000+0000002000000"));
+        report("a short IF (8-digit frequency, not ours) is Unknown",
+               r && r->kind == Ft991Cat::Response::Kind::Unknown);
+    }
+    {
+        const auto r = Ft991Cat::parse(QByteArray("IF0010140740000000000200000"));
+        report("an IF with no clarifier sign is Unknown, not a zero offset",
+               r && r->kind == Ft991Cat::Response::Kind::Unknown);
+    }
+
     // ── Width tables. The values are the manual's SH tables (shared with the
     //    FT-891); the snapping is ours. Index 0 is the per-mode DEFAULT and
     //    must never be chosen by the snap — picking it would command "the

@@ -111,6 +111,9 @@ public slots:
     void setRadioAutoNotch(bool on);
     void setRadioNoiseReduction(bool on);
     void setRadioNoiseReductionLevel(int level1to15);
+    // The clarifier: ONE shared offset, two enable flags (see Ft991Cat).
+    // Offset first, then the flag — so enabling never bites at a stale one.
+    void setRadioClarifier(bool ritOn, bool xitOn, int offsetHz);
     // Position first, then enable — so the notch never lands somewhere the
     // operator did not ask for.
     void setRadioManualNotch(bool on, int hz);
@@ -161,6 +164,8 @@ signals:
     // TX meters, every reading while transmitting (raw 0..255).
     void catTxPowerMeter(int raw);
     void catTxSwrMeter(int raw);
+    // Clarifier state from the IF poll (change-gated as a triple).
+    void catClarifier(bool ritOn, bool xitOn, int offsetHz);
 
     // 24 kHz interleaved-stereo float RX audio (AudioEngine's native format).
     void audioBlockReady(const std::vector<float>& stereoPcm);
@@ -220,6 +225,10 @@ private:
     int m_nrLevel = -1;
     int m_manualNotch = -1;
     int m_manualNotchHz = -1;
+    int m_ritOn = -1;
+    int m_xitOn = -1;
+    int m_clarifierHz = 0;
+    bool m_haveClarifier = false;
 
     // ---- RX audio ----
     QAudioSource* m_audioIn = nullptr;

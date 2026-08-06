@@ -631,6 +631,7 @@ void SliceModel::setRit(bool on, int hz)
     m_ritFreq = hz;
     sendCommand(QString("slice set %1 rit_on=%2 rit_freq=%3")
                     .arg(m_id).arg(on ? 1 : 0).arg(hz));
+    emit ritXitCommandIssued(m_ritOn, m_ritFreq, m_xitOn, m_xitFreq);
     emit ritChanged(on, hz);
 }
 
@@ -640,6 +641,7 @@ void SliceModel::setXit(bool on, int hz)
     m_xitFreq = hz;
     sendCommand(QString("slice set %1 xit_on=%2 xit_freq=%3")
                     .arg(m_id).arg(on ? 1 : 0).arg(hz));
+    emit ritXitCommandIssued(m_ritOn, m_ritFreq, m_xitOn, m_xitFreq);
     emit xitChanged(on, hz);
 }
 

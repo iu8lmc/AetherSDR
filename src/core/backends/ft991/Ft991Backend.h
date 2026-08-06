@@ -52,6 +52,8 @@ public:
     void setSliceNoiseBlanker(int sliceId, bool on, int level) override;
     void setSliceNoiseReduction(int sliceId, bool on, int level) override;
     void setSliceAutoNotch(int sliceId, bool on) override;
+    void setSliceRitXit(int sliceId, bool ritOn, int ritHz,
+                        bool xitOn, int xitHz) override;
     void setSliceAudioMute(int sliceId, bool mute) override;
     void setSliceAudioGain(int sliceId, int gainPercent) override;
     void setSliceAudioPan(int sliceId, int panPercent) override;
@@ -143,6 +145,12 @@ private:
     bool m_radioNarrow = false;
     bool m_manualNotchOn = false;
     int m_manualNotchHz = 0;
+    // Clarifier mirror. ONE offset on this radio (see Ft991Cat), so the
+    // slice's separate rit/xit values are collapsed here — the half the
+    // operator just moved wins.
+    bool m_ritOn = false;
+    bool m_xitOn = false;
+    int m_clarifierHz = 0;
 
     // Where the reflected passband anchors, per mode family (audio Hz).
     // SSB/DATA centre their DSP width near 1500; CW near the sidetone.

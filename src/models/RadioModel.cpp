@@ -1021,6 +1021,12 @@ void RadioModel::setupBackend(const QString& family)
                     [this, s](bool on) {
                 if (m_backend) m_backend->setSliceAutoNotch(s->sliceId(), on);
             });
+            connect(s, &SliceModel::ritXitCommandIssued, this,
+                    [this, s](bool ritOn, int ritHz, bool xitOn, int xitHz) {
+                if (m_backend)
+                    m_backend->setSliceRitXit(s->sliceId(), ritOn, ritHz,
+                                              xitOn, xitHz);
+            });
             wireSliceAudioIntentsToBackend(s);
             m_slices.append(s);
             s->applyChanges(mapped);

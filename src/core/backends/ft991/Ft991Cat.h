@@ -75,6 +75,21 @@ QByteArray queryManualNotchHz();             // "BP01;"
 QByteArray queryTxPowerMeter();              // "RM5;" — PO, 0..255
 QByteArray queryTxSwrMeter();                // "RM6;" — SWR, 0..255
 
+// ---- clarifier (RIT/XIT) ----
+//
+// ONE offset, TWO enable flags: the FT-991 has a single clarifier knob
+// shared by RX and TX, so RIT and XIT cannot hold different values here.
+// The absolute-offset setter is therefore "clear, then step": RC zeroes
+// the shared offset and RU/RD walk it to the target in one command each.
+QByteArray setRitEnabled(bool on);           // "RT0;" / "RT1;"
+QByteArray setXitEnabled(bool on);           // "XT0;" / "XT1;"
+QByteArray clearClarifier();                 // "RC;"
+QByteArray setClarifierOffset(int hz);       // "RC;" + "RU/RD<4 digits>;"
+QByteArray queryInfo();                      // "IF;" — freq+clarifier+flags
+
+// The IF response carries the clarifier state; parse() reports it as an
+// Info response with these fields populated.
+
 // The FT-991 tuning range this backend will command, Hz (RX coverage; the
 // radio itself refuses TX outside its bands, which is its call, not ours).
 inline constexpr double kTuningMinHz = 30'000.0;
@@ -113,6 +128,7 @@ struct Response {
         ManualNotchFreq, // raw valid: Hz
         TxPowerMeter,    // raw valid: 0..255 (PO)
         TxSwrMeter,      // raw valid: 0..255
+        Info,            // frequencyHz, mode, clarifierHz, ritOn, xitOn valid
         Rejected,    // the radio answered "?" — command refused/unparsed
         Unknown,     // well-formed but not a frame this backend consumes
     };
@@ -123,6 +139,9 @@ struct Response {
     int txState = 0;
     int raw = 0;
     QString id;
+    int clarifierHz = 0;   // signed; Info only
+    bool ritOn = false;    // Info only
+    bool xitOn = false;    // Info only
 };
 
 // Parse one ';'-stripped frame. nullopt only for an empty frame.

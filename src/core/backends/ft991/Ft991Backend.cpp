@@ -215,6 +215,14 @@ Ft991Backend::Ft991Backend(QObject* parent) : IRadioBackend(parent)
         emit meterUpdate(QStringLiteral("SLC:LEVEL"), m_sMeterDbm);
     });
 
+    connect(m_device, &Ft991Device::catClarifier, this,
+            [this](bool ritOn, bool xitOn, int offsetHz) {
+        m_ritOn = ritOn;
+        m_xitOn = xitOn;
+        m_clarifierHz = offsetHz;
+        if (m_connected)
+            emitSliceState();
+    });
     connect(m_device, &Ft991Device::catTxPowerMeter, this, [this](int raw) {
         if (m_connected)
             emit meterUpdate(QStringLiteral("TX:FWDPWR"),
@@ -543,6 +551,35 @@ void Ft991Backend::setSliceAutoNotch(int sliceId, bool on)
     emitSliceState();
 }
 
+void Ft991Backend::setSliceRitXit(int sliceId, bool ritOn, int ritHz,
+                                  bool xitOn, int xitHz)
+{
+    if (sliceId != 0)
+        return;
+    // ONE knob for both. Prefer the offset belonging to a clarifier that is
+    // actually ON, and when both are on prefer the one that CHANGED — that
+    // is the half the operator just moved. Neither on: keep the offset so
+    // re-enabling returns to where they left it.
+    int offset = m_clarifierHz;
+    if (ritOn && ritHz != m_clarifierHz)
+        offset = ritHz;
+    else if (xitOn && xitHz != m_clarifierHz)
+        offset = xitHz;
+    else if (ritOn)
+        offset = ritHz;
+    else if (xitOn)
+        offset = xitHz;
+
+    m_ritOn = ritOn;
+    m_xitOn = xitOn;
+    m_clarifierHz = offset;
+    QMetaObject::invokeMethod(m_device,
+        [dev = m_device, ritOn, xitOn, offset] {
+            dev->setRadioClarifier(ritOn, xitOn, offset);
+        }, Qt::QueuedConnection);
+    emitSliceState();
+}
+
 void Ft991Backend::setSliceAudioMute(int sliceId, bool mute)
 {
     if (sliceId != 0)
@@ -848,6 +885,12 @@ void Ft991Backend::emitSliceState()
     d.nr = m_nrOn;
     d.nrLevel = m_nrLevelUi;
     d.anf = m_anfOn;
+    // The shared clarifier reported into BOTH halves — the model keeps
+    // them separate, but on this radio they are one number.
+    d.ritOn = m_ritOn;
+    d.ritFreq = m_clarifierHz;
+    d.xitOn = m_xitOn;
+    d.xitFreq = m_clarifierHz;
     // ONE slice: always active, always the TX slice — this radio's one
     // transmitter lives wherever the dial is.
     d.active = true;

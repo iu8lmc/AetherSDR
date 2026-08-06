@@ -146,6 +146,25 @@ public:
         Q_UNUSED(sliceId);
         Q_UNUSED(on);
     }
+
+    // Receive and transmit incremental tuning — the clarifier. Both flags
+    // and both offsets travel together because a radio with ONE shared
+    // clarifier knob (the FT-991) cannot honour them independently, and a
+    // backend that receives them one at a time would apply an offset the
+    // caller never asked for while the other half was still in flight.
+    //
+    // Offsets are in Hz relative to the slice frequency, signed. On a
+    // shared-knob radio the two offsets must agree; the backend decides
+    // which wins (FT-991: whichever the operator just moved).
+    virtual void setSliceRitXit(int sliceId, bool ritOn, int ritHz,
+                                bool xitOn, int xitHz)
+    {
+        Q_UNUSED(sliceId);
+        Q_UNUSED(ritOn);
+        Q_UNUSED(ritHz);
+        Q_UNUSED(xitOn);
+        Q_UNUSED(xitHz);
+    }
     // Move the panadapter's centre — the receiver's WINDOW, not the slice.
     // A backend whose hardware streams a fixed window retunes it; one that
     // owns a DDC moves the NCO. Without this the UI can pan the view locally

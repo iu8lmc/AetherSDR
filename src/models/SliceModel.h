@@ -339,6 +339,10 @@ signals:
     void nbCommandIssued(bool on, int level);
     void nrCommandIssued(bool on, int level);
     void anfCommandIssued(bool on);
+    // Operator-issued clarifier change. Carries BOTH halves for the reason
+    // IRadioBackend::setSliceRitXit documents: a radio with one shared
+    // clarifier knob cannot be told about them separately.
+    void ritXitCommandIssued(bool ritOn, int ritHz, bool xitOn, int xitHz);
     // Operator-issued per-slice AUDIO changes, same discipline as the three
     // above: audioMuteChanged/audioGainChanged/audioPanChanged also fire when
     // radio status is applied, so driving a command off those would echo the

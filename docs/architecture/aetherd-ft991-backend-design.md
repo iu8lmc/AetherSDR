@@ -203,6 +203,36 @@ no-op verbs on `IRadioBackend` next to `setSliceAgc`, intent signals
 `hasRadioSideDsp`'s riders (pan WNB row, TX APD row, the v4 NRL/ANFL/ANFT
 trio), which no CAT plane can serve.
 
+## Clarifier (RIT / XIT)
+
+The slice's RIT and XIT controls reach the radio's clarifier through
+`setSliceRitXit` — one seam verb carrying BOTH halves, because this radio
+has **one shared clarifier knob** with two independent enable flags and
+cannot hold different RIT and XIT offsets. The backend collapses the
+pair: whichever half is enabled AND just changed wins; with neither
+enabled the offset is kept, so re-enabling returns where the operator
+left it. Both halves are reported back holding that same number.
+
+The wire has no absolute-offset command, so setting one is "clear then
+step": `RC;` zeroes the shared offset and `RU`/`RD` walk it to the
+target, written as one frame pair so nothing observes the intermediate
+zero. Readback is `IF;` — the only command that reports the clarifier at
+all — parsed at fixed field offsets (frequency 5..13, clarifier 14..18,
+RIT 19, XIT 20, mode 21) and polled about once a second.
+
+## Split — blocked, and on what
+
+Not implemented, and not implementable behind the current seam. The
+FT-991's split is VFO-A receives / VFO-B transmits, but AetherSDR models
+split as *a second slice marked TX* — a Flex shape. With `maxSlices = 1`
+the SPLIT button's handler returns early, and the `slice create` it would
+otherwise send is Flex wire text that no seam backend receives. Wiring it
+up needs a slice-lifecycle verb on `IRadioBackend` (there is
+`createPanadapter`, but no `createSlice`), which is a family-neutral
+addition well beyond this backend. Until then the SPLIT badge is a silent
+no-op here — the same ungated-control shape as `+TNF`, and worth fixing
+in the same family-neutral pass.
+
 ## Losing the link
 
 A serial `ResourceError`/`ReadError` (USB cable pulled), ten consecutive

@@ -200,6 +200,35 @@ QByteArray queryManualNotchHz() { return QByteArrayLiteral("BP01;"); }
 QByteArray queryTxPowerMeter()  { return QByteArrayLiteral("RM5;"); }
 QByteArray queryTxSwrMeter()    { return QByteArrayLiteral("RM6;"); }
 
+QByteArray setRitEnabled(bool on)
+{
+    return on ? QByteArrayLiteral("RT1;") : QByteArrayLiteral("RT0;");
+}
+
+QByteArray setXitEnabled(bool on)
+{
+    return on ? QByteArrayLiteral("XT1;") : QByteArrayLiteral("XT0;");
+}
+
+QByteArray clearClarifier() { return QByteArrayLiteral("RC;"); }
+
+QByteArray setClarifierOffset(int hz)
+{
+    // The wire has no absolute-offset command: RC zeroes the shared
+    // clarifier and RU/RD step it. Both frames in one write so nothing can
+    // observe the intermediate zero.
+    const int clamped = std::clamp(hz, -9999, 9999);
+    QByteArray out = clearClarifier();
+    if (clamped == 0)
+        return out;
+    out += (clamped > 0 ? QByteArrayLiteral("RU") : QByteArrayLiteral("RD"));
+    out += QByteArray::number(std::abs(clamped)).rightJustified(4, '0');
+    out += ';';
+    return out;
+}
+
+QByteArray queryInfo() { return QByteArrayLiteral("IF;"); }
+
 QByteArray setFrequency(double hz)
 {
     if (!(hz >= kTuningMinHz) || !(hz <= kTuningMaxHz))
@@ -415,6 +444,31 @@ std::optional<Response> parse(const QByteArray& frame)
             return r;
         r.kind = Response::Kind::AutoNotch;
         r.raw = static_cast<int>(v);
+        return r;
+    }
+    if (frame.startsWith("IF")) {
+        // FT-991 IF response, ';' already stripped = 27 characters:
+        //   [0..1] "IF"  [2..4] memory ch  [5..13] VFO-A frequency
+        //   [14..18] clarifier (sign + 4 digits)  [19] RIT on  [20] XIT on
+        //   [21] mode  [22] VFO/memory  [23] CTCSS  [24..25] "00"  [26] shift
+        // The 9-digit frequency is what distinguishes it from the 26-char
+        // FT-450-style response; anything else is not ours to interpret.
+        if (frame.size() != 27)
+            return r;
+        const qint64 hz = digits(5, 9);
+        const qint64 offset = digits(15, 4);   // [14] is the sign
+        const char sign = frame.at(14);
+        if (hz < 0 || offset < 0 || (sign != '+' && sign != '-'))
+            return r;
+        const QString mode = catToMode(QLatin1Char(frame.at(21)));
+        if (mode.isEmpty())
+            return r;
+        r.kind = Response::Kind::Info;
+        r.frequencyHz = static_cast<double>(hz);
+        r.mode = mode;
+        r.clarifierHz = static_cast<int>(sign == '-' ? -offset : offset);
+        r.ritOn = frame.at(19) == '1';
+        r.xitOn = frame.at(20) == '1';
         return r;
     }
     if (frame.startsWith("RM") && frame.size() == 6) {
